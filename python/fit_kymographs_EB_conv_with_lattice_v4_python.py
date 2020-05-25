@@ -14,7 +14,7 @@ import statistics
 
 
 # Select directory with files to analyse. 
-folder_name = "D:/Chao_tip_analysis/code/analyzed/20191112 EB123KO Chao construct 1 EB3-GFP/01/kymos_analyze"
+folder_name = "E:/PROJECTS/personal_Eugene/Emma/20200525_python_vs_matlab/20200525_test"
 # Note: No nFilePairs, manually supply function with path_folder_name.
 
 def load_all_filenames(folder_name):
@@ -152,12 +152,9 @@ for nFile in range(0,nTotFiles):
             maxind = numpy.argmax(fity)
             maxamprange = (maxy) - (miny)
             #taking care of initial conditions
-            ini = numpy.zeros((nFitParamNG,1))
-            ini[0] = miny
-            ini[1] = 2*maxamprange
-            ini[2] = 0.2*maxamprange           
-            ini[3] = fitx[maxind]
-            ini[4] = 1.0
+            ini = (miny, 2*maxamprange,0.2*maxamprange,invslope*(ycurr-y1)+x1,1.0)
+            #lower and upper bounds of parameters fitting
+            boundsUL=((miny,0,0,xbeg,0),(maxy,10*maxamprange,maxamprange,xend,20.0))
             
             #debug stuff
             if ycurr == 280:
@@ -173,7 +170,7 @@ for nFile in range(0,nTotFiles):
             bFitSuccess = True
             
             try:
-                popt, pcov = curve_fit(erfampG, fitxflat, fityflat, p0=ini, maxfev = 1000)
+                popt, pcov = curve_fit(erfampG, fitxflat.T, fityflat.T, p0=ini, maxfev = 1000,bounds=boundsUL)
                 message = 'Success, but fitting stopped because change in residuals less than tolerance (TolFun).'
             except RuntimeError:
                 bFitSuccess = False
@@ -222,14 +219,14 @@ for nFile in range(0,nTotFiles):
         expfitresultG[p, nFitParamNG+1] = nUmPerPixel*(1./expfitresultG[p,4])
     
     #outliers removal
-    cometposition = expfitresultG[:,3]
-    cometsliding = smooth(cometposition,5)
-    stdval = numpy.median(numpy.absolute(cometposition-cometsliding))
-    diff_x = numpy.absolute(cometposition-cometsliding)
+    #cometposition = expfitresultG[:,3]
+    #cometsliding = smooth(cometposition,5)
+    #stdval = numpy.median(numpy.absolute(cometposition-cometsliding))
+    #diff_x = numpy.absolute(cometposition-cometsliding)
 
     #MTA analysis
     xvals=expfitresultG[:,5]*nMinPerFrame
-    yvals=smooth(expfitresultG[:,3],11)*nUmPerPixel
+    yvals=smooth(expfitresultG[:,3],9)*nUmPerPixel
     xyArr= numpy.column_stack((xvals,yvals))
     optimal_epoches,slopes,xyApprox = mta_analysis(xyArr, rel_rms_improvement = 0.05, max_depth_of_tree = 10, max_num_of_intervals = 5)
     
@@ -265,9 +262,9 @@ for nFile in range(0,nTotFiles):
 
 nComLength_Speed = numpy.column_stack((nSumOfFit[:,6],nSumOfFit[:,7]))
 nComLengthMSDN = numpy.column_stack((statistics.mean(nComLength_Speed[:,0]), numpy.std(nComLength_Speed[:,1]), numpy.size(nComLength_Speed[:,1])))
-nSpeed = numpy.zeros((nFile, 2))
-nCom = numpy.zeros((nFile, 2))
-for i in range(0, nFile):
+nSpeed = numpy.zeros((nTotFiles, 2))
+nCom = numpy.zeros((nTotFiles, 2))
+for i in range(0, nTotFiles):
     filt = nSumOfFit[:, 8] == i
     nCom[i,0] = statistics.mean(nComLength_Speed[filt, 0])
     nCom[i,1] = numpy.std(nComLength_Speed[filt,0]/math.sqrt(numpy.size(nComLength_Speed[filt, 0])))
